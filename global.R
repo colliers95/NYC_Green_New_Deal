@@ -42,6 +42,10 @@ buildings = read.csv(fp1, header = TRUE)
 buses = read.csv(fp2, header = TRUE, stringsAsFactors = FALSE)
 pollutants = read.csv(fp3, header = TRUE, stringsAsFactors = FALSE)
 
+# Load the json for the New York borough shapefiles
+nyboroughs <- geojsonio::geojson_read("Borough Boundaries.geojson",what = "sp")
+nyboroughs = rmapshaper::ms_simplify(nyboroughs)
+
 # Input and format the buildings data set
 buildings = buildings %>% select(
   borough = Borough,
@@ -82,8 +86,38 @@ buildings_gVis$property_name = NULL
 nad83_coords = unique(buses %>% select(x = XCoordinates, y = YCoordinates))
 coordinates(nad83_coords) = c('x', 'y')
 proj4string(nad83_coords) = CRS("+init=esri:102718")
-bus_garage_coords = spTransform(nad83_coords,CRS("+init=epsg:4326"))
+bus_garage_coords = spTransform(nad83_coords, CRS("+init=epsg:4326"))
 
-pollutants_by_group = ungroup(pollutants %>% group_by(Latitude, Longitude) %>% summarise(count= n()))
+pollutants_by_group = ungroup(pollutants %>% group_by(Latitude, Longitude) %>% summarise(count = n()))
 
-bus_by_garage = cbind(data.frame(coordinates(bus_garage_coords)), ungroup(buses %>% group_by(XCoordinates, YCoordinates) %>% summarise(count = n())))
+bus_by_garage = cbind(data.frame(coordinates(bus_garage_coords)),
+                      ungroup(
+                        buses %>% group_by(XCoordinates, YCoordinates) %>% summarise(count = n())
+                      ))
+
+# Build another data set for plotting the vehicle pollutant measurements
+vehicle_pollutants = pollutants %>% filter((
+  substr(
+    Parameter.Name,
+    nchar(Parameter.Name) - 2,
+    nchar(Parameter.Name)
+  ) %in% c("ane", "ene", "yne")
+) |
+  (
+    Parameter.Name %in% c(
+      "Carbon monoxide",
+      "Nitric oxide (NO)",
+      "Nitrogen dioxide (NO2)",
+      "Oxides of nitrogen (NOx)",
+      "Reactive oxides of nitrogen (NOy)",
+      "Sulfur dioxide"
+    )
+  )) %>% group_by(
+    Latitude,
+    Longitude,
+    Parameter.Name,
+    Units.of.Measure,
+    Sample.Duration,
+    County.Name,
+    Address
+  ) %>% summarise(observation = mean(Observation.Count))

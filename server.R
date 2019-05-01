@@ -22,7 +22,6 @@ remove_outliers = function(df) {
 }
 
 server <- function(input, output) {
-  
   buildings_borough_filtered = reactive({
     buildings_gVis %>% filter(borough %in% input$borough)
   })
@@ -131,8 +130,18 @@ server <- function(input, output) {
       xlim(0, 1200) + ylim(0, 0.0032)
   )
   
+  vehicle_pollutants_filtered = reactive({
+    if (input$pollutant == "All hydrocarbons") {
+      vehicle_pollutants %>% filter(substr(Parameter.Name, nchar(Parameter.Name) - 2, nchar(Parameter.Name)) %in% c("ane", "ene", "yne"))
+    } else if (input$pollutant == "All nitrogen oxides") {
+      vehicle_pollutants %>% filter(Parameter.Name %in% c("Nitric oxide (NO)", "Nitrogen dioxide (NO2)", "Oxides of nitrogen (NOx)", "Reactive oxides of nitrogen (NOy)"))
+    } else {
+      vehicle_pollutants %>% filter(Paramter.name == input$pollutant)
+    }
+  })
+  
   output$busMap = renderLeaflet({
-    leaflet() %>% addTiles %>% addCircleMarkers(
+    leaflet() %>% addPolygons(data = nyboroughs) %>% addProviderTiles(providers$Esri.WorldGrayCanvas) %>% addCircleMarkers(
       lng = bus_by_garage$x[bus_by_garage$x > -77],
       lat = bus_by_garage$y[bus_by_garage$x > -77],
       radius = sqrt(bus_by_garage$count),

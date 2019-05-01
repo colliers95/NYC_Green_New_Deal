@@ -171,14 +171,23 @@ body <-
                   icon = icon("bus"),
                   width = 6,
                   color = 'green'
-                )
-              ),
+                ),
+                tabBox(
+                  title = "Description", 
+                  tabPanel("Map Basics", "The chart below maps the current major bus garages, along with the locations of pollution measurement sites. The radius of these is proportional to the number of buses housed, and pollutants measured, respectively."),
+                  tabPanel("Pollutants", "xxxx")
+              )),
               fluidRow(
                 box(
-                  leafletOutput("busMap", width = "1125px", height = "650px"), 
-                  "Hold shift while drawing a rectangle for box zoom",
-                  width = 11
-                  )
+                  leafletOutput("busMap", width = "915px", height = "650px"), 
+                  tags$em("Hold shift while drawing a rectangle for box zoom"),
+                  width = 9
+                  ),
+                box(
+                  selectizeInput(
+                    'pollutant', 'Select pollutant(s) to display', choices = c(c("All hydrocarbons", "All nitrogen oxides"), vehicle_pollutants$Parameter.Name)
+                  ), width = 3
+                )
                 )
               )
     ),
