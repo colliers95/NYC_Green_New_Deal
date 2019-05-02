@@ -6,9 +6,9 @@
 #
 #    http://shiny.rstudio.com/
 #
-library(shiny)
-library(shinydashboard)
-library(leaflet)
+# library(shiny)
+# library(shinydashboard)
+# library(leaflet)
 
 propertyTypechoices = list("All" = "All")
 for (pt in unique(buildings$property_type)) {
@@ -174,8 +174,8 @@ body <-
                 ),
                 tabBox(
                   title = "Description", 
-                  tabPanel("Map Basics", "The chart below maps the current major bus garages, along with the locations of pollution measurement sites. The radius of these is proportional to the number of buses housed, and pollutants measured, respectively."),
-                  tabPanel("Pollutants", "xxxx")
+                  tabPanel("Map Basics", "The chart below shows a pollutant choropleth and also maps current major bus garages and the locations of pollution measurement sites. The radius of these is proportional to the number of buses housed, and pollutants measured, respectively."),
+                  tabPanel("Pollutants", "The pollutants included here are those most attributed to vehicle tailpipes. These include Sulfur Dioxide, Carbon Monoxide, Hydrocarbons, Nitrogen Oxides and small particulate matter.")
               )),
               fluidRow(
                 box(
@@ -186,9 +186,9 @@ body <-
                 box(
                   selectizeInput(
                     'pollutant', 'Select pollutant(s) to display', choices = c(c("All hydrocarbons", "All nitrogen oxides"), vehicle_pollutants$Parameter.Name)
-                  ), width = 3
+                  ), selectizeInput("duration", "Select sample duration", choices = unique(vehicle_pollutants$Sample.Duration)), tableOutput("test"),  width = 3
                 )
-                ), fluidRow(tableOutput("test"))
+                )
               )
     ),
     

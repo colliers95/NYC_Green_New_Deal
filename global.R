@@ -1,6 +1,14 @@
 library(ggplot2)
 library(dplyr)
 library(tigris)
+library(rgdal)
+library(shiny)
+library(shinydashboard)
+library(leaflet)
+library(ggplot2)
+library(dplyr)
+library(googleVis)
+
 
 fp1 = file.path(
   "C:",
@@ -12,7 +20,7 @@ fp1 = file.path(
   "Shiny",
   "NYC_Green_New_Deal",
   "data",
-  "nyc_benchmarking_disclosure_data_reported_in_2017-2.csv"
+  "Building benchmarking 2017.csv"
 )
 fp2 = file.path(
   "C:",
@@ -130,6 +138,5 @@ vehicle_pollutants = pollutants %>% mutate(County.Name = ifelse(
       Parameter.Name,
       Units.of.Measure,
       Sample.Duration,
-      County.Name,
-      Address
+      County.Name
     ) %>% summarise(observation = mean(Observation.Count))
