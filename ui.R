@@ -188,7 +188,7 @@ body <-
                     'pollutant', 'Select pollutant(s) to display', choices = c(c("All hydrocarbons", "All nitrogen oxides"), vehicle_pollutants$Parameter.Name)
                   ), width = 3
                 )
-                )
+                ), fluidRow(tableOutput("test"))
               )
     ),
     

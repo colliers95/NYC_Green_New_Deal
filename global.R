@@ -1,6 +1,6 @@
 library(ggplot2)
 library(dplyr)
-library(rgdal)
+library(tigris)
 
 fp1 = file.path(
   "C:",
@@ -42,9 +42,8 @@ buildings = read.csv(fp1, header = TRUE)
 buses = read.csv(fp2, header = TRUE, stringsAsFactors = FALSE)
 pollutants = read.csv(fp3, header = TRUE, stringsAsFactors = FALSE)
 
-# Load the json for the New York borough shapefiles
-nyboroughs <- geojsonio::geojson_read("Borough Boundaries.geojson",what = "sp")
-nyboroughs = rmapshaper::ms_simplify(nyboroughs)
+boundaries = county_subdivisions("36", c("Bronx", "New York", "Kings", "Richmond", "Queens"), cb = FALSE)
+boundaries = rmapshaper::ms_simplify(boundaries)
 
 # Input and format the buildings data set
 buildings = buildings %>% select(
@@ -96,28 +95,41 @@ bus_by_garage = cbind(data.frame(coordinates(bus_garage_coords)),
                       ))
 
 # Build another data set for plotting the vehicle pollutant measurements
-vehicle_pollutants = pollutants %>% filter((
-  substr(
-    Parameter.Name,
-    nchar(Parameter.Name) - 2,
-    nchar(Parameter.Name)
-  ) %in% c("ane", "ene", "yne")
-) |
-  (
-    Parameter.Name %in% c(
-      "Carbon monoxide",
-      "Nitric oxide (NO)",
-      "Nitrogen dioxide (NO2)",
-      "Oxides of nitrogen (NOx)",
-      "Reactive oxides of nitrogen (NOy)",
-      "Sulfur dioxide"
+vehicle_pollutants = pollutants %>% mutate(County.Name = ifelse(
+  County.Name == "Richmond",
+  "Staten Island",
+  ifelse(
+    County.Name == "Kings",
+    "Brooklyn",
+    ifelse(
+      County.Name == "New York",
+      "Manhattan",
+      ifelse(County.Name == "Queens", "Queens", "Bronx")
     )
-  )) %>% group_by(
-    Latitude,
-    Longitude,
-    Parameter.Name,
-    Units.of.Measure,
-    Sample.Duration,
-    County.Name,
-    Address
-  ) %>% summarise(observation = mean(Observation.Count))
+  )
+)) %>%
+  filter((
+    substr(
+      Parameter.Name,
+      nchar(Parameter.Name) - 2,
+      nchar(Parameter.Name)
+    ) %in% c("ane", "ene", "yne")
+  ) |
+    (
+      Parameter.Name %in% c(
+        "Carbon monoxide",
+        "Nitric oxide (NO)",
+        "Nitrogen dioxide (NO2)",
+        "Oxides of nitrogen (NOx)",
+        "Reactive oxides of nitrogen (NOy)",
+        "Sulfur dioxide"
+      )
+    )) %>% group_by(
+      Latitude,
+      Longitude,
+      Parameter.Name,
+      Units.of.Measure,
+      Sample.Duration,
+      County.Name,
+      Address
+    ) %>% summarise(observation = mean(Observation.Count))

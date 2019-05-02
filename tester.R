@@ -33,19 +33,24 @@
 # # Energy use in buildings is Residential, Commercial and Industrial fossil fuel combustion, plus electricity
 # co2_emissions_changes = data.frame(year = c('2015', '2030'), Buildings = c(97.4, 58.4), Transportation = c(72.8, 47.7), Waste = c(13.2, 8.7), Industry = c(12.2, 8.0), Agriculture = c(8.9, 5.8))
 # plot(gvisColumnChart(co2_emissions_changes, options = list(isStacked = "true")))
-#
-#
-#
 
 
-# Converting from the Sate Plane Coordinates used in the bus data, to Latitude and Longitude data for plotting
-# nad83_coords = unique(buses %>% select(XCoordinates, YCoordinates))
-
-# Plan of attack. Use data.frame(coordinates(bus_garage_coords)), check the class of the two columns (change to numeric if not already),
-# join this with the existing data frame and then group by to find the number of buses at each depo. If this doesn't work, try without the unique and hope the operations preserve order, then do the group by.
-
-str(pollutants)
-library(rgdal)
-#nycounties <- readOGR("gz_2010_us_050_00_500k", "OGRGeoJSON")
-
-
+# popup_p <-
+#   paste0(c(
+#     "Total: ",
+#     as.character(v_p_merged$total),
+#     " ",
+#     tolower(as.character(v_p_merged$Units.of.Measure))
+#   ))
+leaflet() %>% addProviderTiles(providers$Esri.WorldGrayCanvas) %>% addPolygons(
+  data = v_p_merged,
+  fillColor = ~ pal(v_p_merged$total),
+  fillOpacity = 0.4,
+  weight = 0.8,
+  smoothFactor = 0.2
+) %>% addLegend(
+  pal = pal,
+  values = v_p_merged$total,
+  position = 'topleft',
+  title = paste0("Observation", " ","(", tolower(as.character(v_p_merged$Units.of.Measure[1])), ")")
+)

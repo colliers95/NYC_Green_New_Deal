@@ -13,6 +13,7 @@ library(ggplot2)
 library(dplyr)
 library(googleVis)
 library(leaflet)
+library(tigris)
 
 remove_outliers = function(df) {
   df %>% filter((df$total_gg_MtCO2e < (2 * IQR(
@@ -130,34 +131,70 @@ server <- function(input, output) {
       xlim(0, 1200) + ylim(0, 0.0032)
   )
   
-  vehicle_pollutants_filtered = reactive({
+  county_pollutants_filtered = reactive({
     if (input$pollutant == "All hydrocarbons") {
-      vehicle_pollutants %>% filter(substr(Parameter.Name, nchar(Parameter.Name) - 2, nchar(Parameter.Name)) %in% c("ane", "ene", "yne"))
+      p_temp = vehicle_pollutants %>% filter(substr(
+        Parameter.Name,
+        nchar(Parameter.Name) - 2,
+        nchar(Parameter.Name)
+      ) %in% c("ane", "ene", "yne")) %>% group_by(County.Name, Units.of.Measure) %>% summarise(average = mean(observation))
     } else if (input$pollutant == "All nitrogen oxides") {
-      vehicle_pollutants %>% filter(Parameter.Name %in% c("Nitric oxide (NO)", "Nitrogen dioxide (NO2)", "Oxides of nitrogen (NOx)", "Reactive oxides of nitrogen (NOy)"))
+      p_temp = vehicle_pollutants %>% filter(
+        Parameter.Name %in% c(
+          "Nitric oxide (NO)",
+          "Nitrogen dioxide (NO2)",
+          "Oxides of nitrogen (NOx)",
+          "Reactive oxides of nitrogen (NOy)"
+        )
+      ) %>% group_by(County.Name, Units.of.Measure) %>% summarise(average = mean(observation))
     } else {
-      vehicle_pollutants %>% filter(Paramter.name == input$pollutant)
+      p_temp = vehicle_pollutants %>% filter(Paramter.name == input$pollutant) %>% group_by(County.Name, Units.of.Measure) %>% summarise(average = mean(observation))
     }
+    geo_join(boundaries, p_temp, "NAME", "County.Name")
+  })
+  
+  output$test = renderTable({
+    county_pollutants_filtered()
+  })
+  
+  pal = reactive({
+    colorNumeric("YlOrBr", domain = county_pollutants_filtered()['average'])
   })
   
   output$busMap = renderLeaflet({
-    leaflet() %>% addPolygons(data = nyboroughs) %>% addProviderTiles(providers$Esri.WorldGrayCanvas) %>% addCircleMarkers(
-      lng = bus_by_garage$x[bus_by_garage$x > -77],
-      lat = bus_by_garage$y[bus_by_garage$x > -77],
-      radius = sqrt(bus_by_garage$count),
-      fillOpacity = 0.5,
-      group = "Bus Garages",
-      color = "#FFD800"
-    ) %>% addCircleMarkers(
-      lng = pollutants_by_group$Longitude,
-      lat = pollutants_by_group$Latitude,
-      radius = sqrt(pollutants_by_group$count),
-      fillOpacity = 0.5,
-      group = "Pollutant Measurement"
-    ) %>% addLayersControl(
-      overlayGroups = c("Bus Garages", "Pollutant Measurement"),
-      options = layersControlOptions(collapsed = FALSE)
+    leaflet()  %>% addProviderTiles(providers$Esri.WorldGrayCanvas) %>% addPolygons(
+      data = county_pollutants_filtered(),
+      fillColor = pal(county_pollutants_filtered()['average']),
+      fillOpacity = 0.4,
+      weight = 0.8,
+      smoothFactor = 0.2
+    )
+    %>% addLegend(
+      pal = pal,
+      values = county_pollutants_filtered()['average'],
+      position = 'topleft',
+      title = paste0("Observation", " ", "(", tolower(
+        as.character(county_pollutants_filtered()['Units.of.Measure'][1])
+      ), ")")
     )
   })
   
 }
+
+# ) %>% addCircleMarkers(
+#   lng = bus_by_garage$x[bus_by_garage$x > -77],
+#   lat = bus_by_garage$y[bus_by_garage$x > -77],
+#   radius = sqrt(bus_by_garage$count),
+#   fillOpacity = 0.5,
+#   group = "Bus Garages",
+#   color = "#FFD800"
+# ) %>% addCircleMarkers(
+#   lng = pollutants_by_group$Longitude,
+#   lat = pollutants_by_group$Latitude,
+#   radius = sqrt(pollutants_by_group$count),
+#   fillOpacity = 0.5,
+#   group = "Pollutant Measurement"
+# ) %>% addLayersControl(
+#   overlayGroups = c("Bus Garages", "Pollutant Measurement"),
+#   options = layersControlOptions(collapsed = FALSE)
+# )
