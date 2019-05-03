@@ -59,7 +59,7 @@ body <-
           width = 4,
           color = 'green'
         )
-      ),
+      ),fluidRow(box(tags$h4("New York State is aiming for a 40% reduction in greenhouse gas emissions from 1990 levels and for 50% of its energy to come from renewable energy sources by 2030"), width = 12)),
       fluidRow(
         box(
           # Description of the CLimate Mobilization Act, plot of require emissions changes and De Blasio youtube video
@@ -95,7 +95,7 @@ body <-
           height = "515px"
         ),
         box(
-          "Required emissions changes", htmlOutput("changesPlot")
+          title = "Required emissions changes", htmlOutput("changesPlot")
         ),
         fluidRow(column(12, offset = 1,
           tags$iframe(
@@ -182,14 +182,14 @@ body <-
               )),
               fluidRow(
                 box(
-                  leafletOutput("busMap", width = "915px", height = "650px"), 
+                  leafletOutput("busMap", width = "1025px", height = "650px"), 
                   tags$em("Hold shift while drawing a rectangle for box zoom"),
-                  width = 9
+                  width = 10
                   ),
                 box(
                   selectizeInput(
-                    'pollutant', 'Select pollutant(s) to display', choices = c(c("All hydrocarbons", "All nitrogen oxides"), vehicle_pollutants$Parameter.Name)
-                  ), selectizeInput("duration", "Select sample duration", choices = unique(vehicle_pollutants$Sample.Duration)), tableOutput("test"),  width = 3
+                    'pollutant', 'Select pollutant(s) to display', choices = c(c("All hydrocarbons", "All nitrogen oxides"), sort(vehicle_pollutants$Parameter.Name))
+                  ), selectizeInput("duration", "Select sample duration", choices = unique(vehicle_pollutants$Sample.Duration)), tableOutput("data"), width = 2
                 )
                 )
               )

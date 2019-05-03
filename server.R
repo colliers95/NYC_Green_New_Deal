@@ -17,8 +17,7 @@ remove_outliers = function(df) {
 
 
 server <- function(input, output, session) {
-  
-# Filter the buildings data according to the Shiny inputs
+  # Filter the buildings data according to the Shiny inputs
   buildings_out_filtered = reactive({
     if (input$outliers == 1) {
       remove_outliers(buildings_gVis %>% filter(borough %in% input$borough))
@@ -40,7 +39,7 @@ server <- function(input, output, session) {
     }
   })
   
-# Make a reactive inforbox displaying the average GHG emissions of the buildings the user selects
+  # Make a reactive inforbox displaying the average GHG emissions of the buildings the user selects
   output$av_build_box = renderInfoBox({
     av_value = paste(c(as.character(round(
       mean(buildings_filtered()[, "total_gg_MtCO2e"])
@@ -54,17 +53,19 @@ server <- function(input, output, session) {
       color = 'green'
     )
   })
-
-# Make a googlevis column chart showing the required changes in the city's emissions, by category
+  
+  # Make a googlevis column chart showing the required changes in the city's emissions, by category
+  # Data from https://www.dec.ny.gov/docs/administration_pdf/nyserdaghg2015.pdf
+  # Buildings includes Residential, Commercial and Industrial FF combustion, and electricity generation
   output$changesPlot = renderGvis({
     gvisColumnChart(
       data.frame(
-        year = c('2015', '2030'),
-        Buildings = c(97.4, 58.4),
-        Transportation = c(72.8, 47.7),
-        Waste = c(13.2, 8.7),
-        Industry = c(12.2, 8.0),
-        Agriculture = c(8.9, 5.8)
+        year = c('1990','2015', '2030'),
+        Buildings = c(143.7, 97.4, 58.4),
+        Transportation = c(60.4, 72.8, 47.7),
+        Waste = c(14.8, 13.2, 8.7),
+        Industry = c(3.6, 12.2, 8.0),
+        Agriculture = c(8.3, 8.9, 5.8)
       ),
       options = list(
         vAxis = "{title:'New York state GHG inventory MMtCO2e'}",
@@ -72,14 +73,14 @@ server <- function(input, output, session) {
         explorer = "{actions:['dragToZoom', 'rightClickToReset']}",
         legend = "{position: 'bottom', alignment: 'center'}",
         width = 600,
-        height = 470,
+        height = 450,
         chartArea = "{left:60, top:25, width:'85%', height:'80%'}",
         isStacked = "true"
       )
     )
   })
   
-# Make an interactive googlevis scatter plot of buildings emissions vs size
+  # Make an interactive googlevis scatter plot of buildings emissions vs size
   output$buildingsPlot = renderGvis({
     gvisScatterChart(
       buildings_filtered()[c(
@@ -109,8 +110,8 @@ server <- function(input, output, session) {
       )
     )
   })
-
-# Make an interactive ggplot histogram showing the distibutions of building emissions
+  
+  # Make an interactive ggplot histogram showing the distibutions of building emissions
   output$buildingsHisto = renderPlot(
     ggplot(data = buildings_filtered(), aes(x = total_gg_MtCO2e)) + geom_density(aes(color = borough), size = 2) + theme(
       axis.ticks = element_line(colour = "gray80"),
@@ -127,14 +128,14 @@ server <- function(input, output, session) {
       xlim(0, 1200) + ylim(0, 0.0032)
   )
   
-# Filter the vehice pollutants data according to the user's selection  
+  # Filter the vehice pollutants data according to the user's selected pollutant
   v_pollutants_filtered = reactive({
     if (input$pollutant == "All hydrocarbons") {
       vehicle_pollutants %>% filter(substr(
         Parameter.Name,
         nchar(Parameter.Name) - 2,
         nchar(Parameter.Name)
-      ) %in% c("ane", "ene", "yne")) %>% group_by(County.Name, Units.of.Measure, Sample.Duration) %>% summarise(average = mean(observation))
+      ) %in% c("ane", "ene", "yne"))
     } else if (input$pollutant == "All nitrogen oxides") {
       vehicle_pollutants %>% filter(
         Parameter.Name %in% c(
@@ -143,60 +144,85 @@ server <- function(input, output, session) {
           "Oxides of nitrogen (NOx)",
           "Reactive oxides of nitrogen (NOy)"
         )
-      ) %>% group_by(County.Name, Units.of.Measure, Sample.Duration) %>% summarise(average = mean(observation))
+      )
     } else {
-      vehicle_pollutants %>% filter(Parameter.Name == input$pollutant) %>% group_by(County.Name, Units.of.Measure, Sample.Duration) %>% summarise(average = mean(observation))
+      vehicle_pollutants %>% filter(Parameter.Name == input$pollutant)
     }
   })
-
-# Update the available sample durations according to the selected pollutant
+  
+  # Update the available sample durations according to the selected pollutant
   observe({
-    updateSelectizeInput(session, "duration", choices = unique(v_pollutants_filtered()$Sample.Duration))
-  })
-
-# Join the pollutant level data to the borough shapefiles
-  county_pollutants_joined = reactive({
-    geo_join(boundaries, v_pollutants_filtered(), "NAME", "County.Name")
+    updateSelectizeInput(session,
+                         "duration",
+                         choices = unique(v_pollutants_filtered()$Sample.Duration))
   })
   
-# The palette used in the below map needs to adjust to the range of values in the selected pollutant levels
-  pal = reactive({
-    colorNumeric(c("#fec44f", "#d95f0e"), domain = county_pollutants_joined()[['average']])
+  # Filter the vehice pollutants data again, this time according to the sample duration from those available
+  # Then group by borough and join the pollutant level data to the borough shapefiles
+  county_pollutants_joined = reactive({
+    v_p_filt = v_pollutants_filtered() %>% filter(Sample.Duration == input$duration) %>% group_by(County.Name, Units.of.Measure, Sample.Duration) %>% summarise(Average = mean(observation))
+    geo_join(boundaries, v_p_filt, "NAME", "County.Name")
   })
-
-# Create a leaflet map that shows the sites of bus depos and pollutant measurement, as well as achoropleth showing the observed 
-# levels of different pollutants in each borough
+  
+  # Make a table displaying the pollutant level data in the choropleth
+  output$data = renderTable({
+    county_pollutants_joined()[c('NAME', 'Average')]
+  })
+  
+  
+  # The palette used in the below map needs to adjust to the range of values in the selected pollutant levels
+  pal = reactive({
+    colorNumeric(c("#bcbddc", "#756bb1"), domain = county_pollutants_joined()[['Average']])
+  })
+  
+  # Create a leaflet map that shows the sites of bus depos and pollutant measurement, as well as achoropleth showing the observed
+  # levels of different pollutants in each borough
   output$busMap = renderLeaflet({
     leaflet() %>% addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Grey") %>% addTiles(group = "OSM") %>% addPolygons(
       data = county_pollutants_joined(),
-      fillColor = ~ pal()(county_pollutants_joined()[['average']]),
+      fillColor = ~ pal()(county_pollutants_joined()[['Average']]),
       fillOpacity = 0.4,
-      weight = 0.8,
+      opacity = 1,
+      color = "#666",
+      dashArray = "3",
+      weight = 1.5,
       smoothFactor = 0.2,
-      group= "Pollutant levels"
+      highlight = highlightOptions(
+        weight = 3,
+        color = "#666",
+        dashArray = "",
+        fillOpacity = 0.7),
+      group = "Pollutant levels"
     ) %>% addLegend(
       pal = pal(),
-      values = county_pollutants_joined()[['average']],
+      values = county_pollutants_joined()[['Average']],
       position = 'topleft',
-      title = paste0("Observation", " ", "(", tolower(
+      title = paste0("Observation","<br>", "(", tolower(
         as.character(county_pollutants_joined()[['Units.of.Measure']][1])
       ), ")")
     ) %>% addCircleMarkers(
-      lng = bus_by_garage$x[bus_by_garage$x > -77],
-      lat = bus_by_garage$y[bus_by_garage$x > -77],
+      lng = bus_by_garage$XCoordinates,
+      lat = bus_by_garage$YCoordinates,
       radius = sqrt(bus_by_garage$count),
-      fillOpacity = 0.5,
+      fillOpacity = 0.6,
+      stroke = FALSE,
       group = "Bus garages",
       color = "#FFD800"
     ) %>% addCircleMarkers(
       lng = pollutants_by_group$Longitude,
       lat = pollutants_by_group$Latitude,
       radius = sqrt(pollutants_by_group$count),
-      fillOpacity = 0.5,
-      group = "Pollutant measurement sites"
+      fillOpacity = 0.6,
+      stroke = FALSE,
+      group = "Pollutant measurement sites",
+      color = "#d95f0e"
     ) %>% addLayersControl(
       baseGroups = c("Grey", "OSM"),
-      overlayGroups = c("Bus garages", "Pollutant measurement sites", "Pollutant levels"),
+      overlayGroups = c(
+        "Bus garages",
+        "Pollutant measurement sites",
+        "Pollutant levels"
+      ),
       options = layersControlOptions(collapsed = FALSE)
     )
   })

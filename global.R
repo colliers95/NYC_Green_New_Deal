@@ -91,17 +91,13 @@ buildings_gVis$`Staten Island.html.tooltip` = buildings_gVis$property_name
 buildings_gVis$property_name = NULL
 
 # Build separate data frames for use with leaflet, involving a change of coordinates for the bus data
-nad83_coords = unique(buses %>% select(x = XCoordinates, y = YCoordinates))
-coordinates(nad83_coords) = c('x', 'y')
+nad83_coords = ungroup(buses %>% group_by(XCoordinates, YCoordinates) %>% summarise(count = n()))
+coordinates(nad83_coords) = c('XCoordinates', 'YCoordinates')
 proj4string(nad83_coords) = CRS("+init=esri:102718")
-bus_garage_coords = spTransform(nad83_coords, CRS("+init=epsg:4326"))
+bus_by_garage = spTransform(nad83_coords, CRS("+init=epsg:4326"))
+bus_by_garage = bus_by_garage[bus_by_garage$XCoordinates > -77,]
 
-pollutants_by_group = ungroup(pollutants %>% group_by(Latitude, Longitude) %>% summarise(count = n()))
-
-bus_by_garage = cbind(data.frame(coordinates(bus_garage_coords)),
-                      ungroup(
-                        buses %>% group_by(XCoordinates, YCoordinates) %>% summarise(count = n())
-                      ))
+pollutants_by_group = pollutants %>% group_by(Latitude, Longitude) %>% summarise(count = n())
 
 # Build another data set for plotting the vehicle pollutant measurements
 vehicle_pollutants = pollutants %>% mutate(County.Name = ifelse(
@@ -133,11 +129,16 @@ vehicle_pollutants = pollutants %>% mutate(County.Name = ifelse(
         "Reactive oxides of nitrogen (NOy)",
         "Sulfur dioxide"
       )
-    )) %>% group_by(
-      Latitude,
-      Longitude,
-      Parameter.Name,
-      Units.of.Measure,
-      Sample.Duration,
-      County.Name
-    ) %>% summarise(observation = mean(Observation.Count))
+    ) |
+    (
+      Parameter.Name == "PM2.5 - Local Conditions" &
+        Metric.Used == "Daily Mean" &
+        Sample.Duration == "24 HOUR"
+    )
+  ) %>% group_by(Latitude,
+                 Longitude,
+                 Parameter.Name,
+                 Units.of.Measure,
+                 Sample.Duration,
+                 County.Name) %>% summarise(observation = mean(Observation.Count))
+
