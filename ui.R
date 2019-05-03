@@ -6,10 +6,8 @@
 #
 #    http://shiny.rstudio.com/
 #
-# library(shiny)
-# library(shinydashboard)
-# library(leaflet)
 
+# Build the available choices for building type, and assign a value to them, including an "All" option
 propertyTypechoices = list("All" = "All")
 for (pt in unique(buildings$property_type)) {
   propertyTypechoices[[as.character(pt)]] = as.character(pt)
@@ -37,6 +35,7 @@ sidebar <-
 body <-
   dashboardBody(tabItems(
     tabItem(
+      # Info boxes for top of the overview page
       tabName = "overview",
       fluidRow(
         infoBox(
@@ -63,6 +62,7 @@ body <-
       ),
       fluidRow(
         box(
+          # Description of the CLimate Mobilization Act, plot of require emissions changes and De Blasio youtube video
           title = "The act",
           "The Climate Mobilization Act passed city council on Thursday, 18th of April 2019. It aims to keep the city in line with emission reduction targets set by the international Paris climate agreement.",
           br(),
@@ -107,6 +107,7 @@ body <-
       )),
       
       tabItem(
+        # Buildings scatter plot and histogram, input selectors and average greenhouse gas emissions box
         tabName = "buildings",
         fluidRow(
           valueBox(
@@ -163,7 +164,9 @@ body <-
         )
       ),
       
-      tabItem(tabName = "buses",
+      tabItem(
+        # Map of bus garages and pollutant information with inputs and description
+        tabName = "buses",
               fluidRow(
                 valueBox(
                   "School Bus Bill",
@@ -192,6 +195,7 @@ body <-
               )
     ),
     
+    # CSS for styling the dashboard title and overview description
     tags$head(tags$style(
       HTML(
         '

@@ -9,7 +9,7 @@ library(ggplot2)
 library(dplyr)
 library(googleVis)
 
-
+# Read in the buildings, buses and pollutants data sets
 fp1 = file.path(
   "C:",
   "Users",
@@ -50,6 +50,7 @@ buildings = read.csv(fp1, header = TRUE)
 buses = read.csv(fp2, header = TRUE, stringsAsFactors = FALSE)
 pollutants = read.csv(fp3, header = TRUE, stringsAsFactors = FALSE)
 
+# Read in the borough shapefiles
 boundaries = county_subdivisions("36", c("Bronx", "New York", "Kings", "Richmond", "Queens"), cb = FALSE)
 boundaries = rmapshaper::ms_simplify(boundaries)
 
@@ -89,7 +90,7 @@ buildings_gVis$`Staten Island` = ifelse(buildings_gVis$borough == "Staten Island
 buildings_gVis$`Staten Island.html.tooltip` = buildings_gVis$property_name
 buildings_gVis$property_name = NULL
 
-# Build a separate data frame for use with leaflet, involving a change of coordinates for the bus data
+# Build separate data frames for use with leaflet, involving a change of coordinates for the bus data
 nad83_coords = unique(buses %>% select(x = XCoordinates, y = YCoordinates))
 coordinates(nad83_coords) = c('x', 'y')
 proj4string(nad83_coords) = CRS("+init=esri:102718")

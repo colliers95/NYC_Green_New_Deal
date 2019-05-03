@@ -7,14 +7,7 @@
 #    http://shiny.rstudio.com/
 #
 
-# library(shiny)
-# library(shinydashboard)
-# library(ggplot2)
-# library(dplyr)
-# library(googleVis)
-# library(leaflet)
-# library(tigris)
-
+# Define a function for removing outliers from the emissions column of the data frame
 remove_outliers = function(df) {
   df %>% filter((df$total_gg_MtCO2e < (2 * IQR(
     df$total_gg_MtCO2e
@@ -22,8 +15,10 @@ remove_outliers = function(df) {
     (df$gross_sf < (2 * IQR(df$gross_sf))))
 }
 
+
 server <- function(input, output, session) {
   
+# Filter the buildings data according to the Shiny inputs
   buildings_out_filtered = reactive({
     if (input$outliers == 1) {
       remove_outliers(buildings_gVis %>% filter(borough %in% input$borough))
@@ -45,7 +40,7 @@ server <- function(input, output, session) {
     }
   })
   
-  
+# Make a reactive inforbox displaying the average GHG emissions of the buildings the user selects
   output$av_build_box = renderInfoBox({
     av_value = paste(c(as.character(round(
       mean(buildings_filtered()[, "total_gg_MtCO2e"])
@@ -59,7 +54,8 @@ server <- function(input, output, session) {
       color = 'green'
     )
   })
-  
+
+# Make a googlevis column chart showing the required changes in the city's emissions, by category
   output$changesPlot = renderGvis({
     gvisColumnChart(
       data.frame(
@@ -83,6 +79,7 @@ server <- function(input, output, session) {
     )
   })
   
+# Make an interactive googlevis scatter plot of buildings emissions vs size
   output$buildingsPlot = renderGvis({
     gvisScatterChart(
       buildings_filtered()[c(
@@ -112,7 +109,8 @@ server <- function(input, output, session) {
       )
     )
   })
-  
+
+# Make an interactive ggplot histogram showing the distibutions of building emissions
   output$buildingsHisto = renderPlot(
     ggplot(data = buildings_filtered(), aes(x = total_gg_MtCO2e)) + geom_density(aes(color = borough), size = 2) + theme(
       axis.ticks = element_line(colour = "gray80"),
@@ -129,6 +127,7 @@ server <- function(input, output, session) {
       xlim(0, 1200) + ylim(0, 0.0032)
   )
   
+# Filter the vehice pollutants data according to the user's selection  
   v_pollutants_filtered = reactive({
     if (input$pollutant == "All hydrocarbons") {
       vehicle_pollutants %>% filter(substr(
@@ -149,20 +148,24 @@ server <- function(input, output, session) {
       vehicle_pollutants %>% filter(Parameter.Name == input$pollutant) %>% group_by(County.Name, Units.of.Measure, Sample.Duration) %>% summarise(average = mean(observation))
     }
   })
-  
+
+# Update the available sample durations according to the selected pollutant
   observe({
     updateSelectizeInput(session, "duration", choices = unique(v_pollutants_filtered()$Sample.Duration))
   })
-  
+
+# Join the pollutant level data to the borough shapefiles
   county_pollutants_joined = reactive({
     geo_join(boundaries, v_pollutants_filtered(), "NAME", "County.Name")
   })
   
-  
+# The palette used in the below map needs to adjust to the range of values in the selected pollutant levels
   pal = reactive({
     colorNumeric(c("#fec44f", "#d95f0e"), domain = county_pollutants_joined()[['average']])
   })
-  
+
+# Create a leaflet map that shows the sites of bus depos and pollutant measurement, as well as achoropleth showing the observed 
+# levels of different pollutants in each borough
   output$busMap = renderLeaflet({
     leaflet() %>% addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Grey") %>% addTiles(group = "OSM") %>% addPolygons(
       data = county_pollutants_joined(),
